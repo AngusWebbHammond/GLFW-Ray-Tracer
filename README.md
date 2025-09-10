@@ -45,15 +45,15 @@ cd build
 cmake ..
 ```
 
-4. **Build the project in Debug**:
+4. **Build the project in Release**:
 
 ```bash
-cmake --build .
+cmake --build . --config Release
 ```
 
 5. **Run the executable**:
 
 ```bash
-cd Debug
+cd Release
 .\main.exe
 ```

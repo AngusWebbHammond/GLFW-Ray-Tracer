@@ -35,6 +35,12 @@ endif()
 set (APPLICATION_SOURCES
     src/Core/application.cpp
     src/Core/application.h
+    src/Core/ui.cpp
+    src/Core/ui.h
+    src/Renderer/renderer.cpp
+    src/Renderer/renderer.h
+    src/Renderer/rayTracer.cpp
+    src/Renderer/rayTracer.h
 )
 
 add_executable(main src/main.cpp ${GLAD_GL} ${IMGUI_SOURCES} ${APPLICATION_SOURCES})
