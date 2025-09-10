@@ -25,7 +25,7 @@ namespace RayTracer {
 
             float timeStart = glfwGetTime();
 
-            m_renderer.render(m_rayTracer.run(1, &m_renderer));
+            m_renderer.render(m_rayTracer.run(3, &m_renderer));
 
             float timeEnd = glfwGetTime();
 
