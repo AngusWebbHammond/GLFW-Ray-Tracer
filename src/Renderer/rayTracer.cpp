@@ -12,6 +12,7 @@ namespace RayTracer {
         material1.emissionColour = glm::vec3(1.0f);
         material1.emissiveStrength = 1.0f;
         material2.reflectivness = 1.0f;
+        material3.reflectivness = 1.0f;
 
         m_spheres = {
             Sphere({ {1.0f, 0.0f, 3.0f}, 1.0f, material1 }),
@@ -42,14 +43,15 @@ namespace RayTracer {
                     1.0f
                 ));
 
-                glm::vec3 colour(0.0f);
+                glm::vec3 colour(1.0f);
                 glm::vec3 attenuation(1.0f);
                 bool canBounce = true;
 
                 for (int t = 0; t < bounceLimit; t++) {
                     glm::vec3 bounceColour = traceRay(ray, m_spheres, canBounce);
-                    colour += attenuation * bounceColour;
-                    attenuation *= 0.5f;
+                    colour *= attenuation * bounceColour;
+                    attenuation *= 0.8f;
+                    if (colour == glm::vec3(0.0f)) break;
                     if (!canBounce) break;
                 }
 
@@ -96,7 +98,7 @@ namespace RayTracer {
             return colour + hitSphere.hitColour * hitSphere.hitMaterial.reflectivness;
         }
 
-        return glm::vec3(0.5f, 0.0f, 0.2f);
+        return glm::vec3(0.0f);
     }
 
     bool RayTracer::isRayIntersectSphere(const Ray& ray, const Sphere& sphere, float& intersection)
