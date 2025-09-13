@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui.h"
+#include <glm/gtc/type_ptr.hpp>
 
 namespace RayTracer::UI {
     namespace {
@@ -43,12 +44,20 @@ namespace RayTracer::UI {
                 ImGui::End();
             }
         }
+    }
 
-        void createImGuiPropertiesPanel()
-        {
-            if (ImGui::Begin("Properties")) {
-                ImGui::End();
+    void createImGuiPropertiesPanel(RayTracer& rayTracer)
+    {
+        if (ImGui::Begin("Properties")) {
+            for (Sphere& sphere : rayTracer.m_spheres) {
+                ImGui::PushID(&sphere);
+                ImGui::DragFloat3("Centre", glm::value_ptr(sphere.centre), 0.1f);
+                ImGui::DragFloat("Radius", &sphere.radius, 0.1f);
+                ImGui::ColorEdit3("Colour", glm::value_ptr(sphere.material.materialColour), 0.1f);
+                ImGui::PopID();
+                ImGui::Separator();
             }
+            ImGui::End();
         }
     }
 
@@ -83,7 +92,6 @@ namespace RayTracer::UI {
     {
         createImGuiDockspace();
         createImGuiViewport(renderer);
-        createImGuiPropertiesPanel();
     }
 
     void renderImGui()

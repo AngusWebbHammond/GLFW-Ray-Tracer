@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "renderer.h"
+#include <random>
 
 namespace RayTracer {
     struct Material {
@@ -38,7 +39,10 @@ namespace RayTracer {
         glm::vec3 hitPoint;
         glm::vec3 hitColour;
         glm::vec3 hitNormal;
+
         Material hitMaterial;
+
+        glm::vec3 hitLight;
     };
 
     class RayTracer {
@@ -47,10 +51,19 @@ namespace RayTracer {
         std::vector<glm::vec3> run(int bounceLimit, Renderer* renderer);
 
     private:
-        glm::vec3 traceRay(Ray& ray, const std::vector<Sphere>& spheres, bool& canBounce);
+        glm::vec3 traceRay(Ray& ray, const std::vector<Sphere>& spheres, int bounceLimit);
         bool isRayIntersectSphere(const Ray& ray, const Sphere& sphere, float& closestIntersection);
+        glm::vec3 getRandomOnUnitSphere();
+
+    public:
+        std::vector<Sphere> m_spheres;
+        bool m_accumilate;
+        int m_frames;
 
     private:
-        std::vector<Sphere> m_spheres;
+        std::mt19937 m_random;
+        std::uniform_real_distribution<double> m_uniformDistribution;
+
+        std::vector<glm::vec3> m_accumilateFrameBuffer;
     };
 }

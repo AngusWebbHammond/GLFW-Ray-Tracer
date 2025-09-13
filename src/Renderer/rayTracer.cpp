@@ -1,24 +1,30 @@
 #pragma once
 
+#include <iostream>
+
 #include "rayTracer.h"
 
 namespace RayTracer {
     RayTracer::RayTracer()
     {
-        Material material1 = Material({ 1.0f, 0.0f, 0.0f });
+        Material material1 = Material({ 1.0f, 1.0f, 1.0f });
         Material material2 = Material({ 0.0f, 1.0f, 0.0f });
         Material material3 = Material({ 0.0f, 0.0f, 1.0f });
 
         material1.emissionColour = glm::vec3(1.0f);
         material1.emissiveStrength = 1.0f;
         material2.reflectivness = 1.0f;
-        material3.reflectivness = 1.0f;
+        material3.reflectivness = 0.3f;
 
         m_spheres = {
-            Sphere({ {1.0f, 0.0f, 3.0f}, 1.0f, material1 }),
-            Sphere({ {-1.0f, 0.0f, 3.0f}, 1.0f, material2 }),
-            Sphere({ {0.0f, 2.0f, 3.0f}, 1.0f, material3 })
+            Sphere({ {4.5f, 0.2f, 2.6f}, 1.0f, material1 }),
+            Sphere({ {0.0f, 0.0f, 3.0f}, 1.0f, material2 }),
+            Sphere({ {0.0f, 10.0f, 3.0f}, 9.0f, material3 })
         };
+
+        m_random = std::mt19937();
+        m_accumilate = false;
+        m_frames = 1;
     }
 
     std::vector<glm::vec3> RayTracer::run(int bounceLimit, Renderer* renderer)
@@ -26,12 +32,21 @@ namespace RayTracer {
         FrameBufferSettings frameBufferSize = renderer->getFrameBufferSize();
         std::vector<glm::vec3> frameBuffer(frameBufferSize.width * frameBufferSize.height);
 
+        if (m_accumilateFrameBuffer.empty()) {
+            m_accumilateFrameBuffer.resize(frameBufferSize.width * frameBufferSize.height, glm::vec3(0.0f));
+        }
+
         Camera camera;
         camera.fov = 45.0f;
         camera.location = glm::vec3(0.0f, 0.0f, -5.0f);
 
         float rayFactor = glm::tan(glm::radians(camera.fov) / 2.0f);
         float aspectRatio = frameBufferSize.width / static_cast<float>(frameBufferSize.height);
+
+        if (m_accumilate) m_frames++;
+        else {
+            m_frames = 1;
+        }
 
         for (int i = 0; i < frameBufferSize.height; i++) {
             for (int j = 0; j < frameBufferSize.width; j++) {
@@ -43,62 +58,75 @@ namespace RayTracer {
                     1.0f
                 ));
 
-                glm::vec3 colour(1.0f);
-                glm::vec3 attenuation(1.0f);
-                bool canBounce = true;
+                glm::vec3 colour = traceRay(ray, m_spheres, bounceLimit);
 
-                for (int t = 0; t < bounceLimit; t++) {
-                    glm::vec3 bounceColour = traceRay(ray, m_spheres, canBounce);
-                    colour *= attenuation * bounceColour;
-                    attenuation *= 0.8f;
-                    if (colour == glm::vec3(0.0f)) break;
-                    if (!canBounce) break;
+                if (m_accumilate) {
+                    m_accumilateFrameBuffer[i * frameBufferSize.width + j] += colour;
+                    frameBuffer[i * frameBufferSize.width + j] = m_accumilateFrameBuffer[i * frameBufferSize.width + j] / glm::vec3(m_frames);
                 }
 
-                frameBuffer[i * frameBufferSize.width + j] = colour;
+                else {
+                    m_accumilateFrameBuffer[i * frameBufferSize.width + j] = glm::vec3(0.0f);
+                    frameBuffer[i * frameBufferSize.width + j] = colour;
+                }
             }
         }
 
         return frameBuffer;
     }
 
-    glm::vec3 RayTracer::traceRay(Ray& ray, const std::vector<Sphere>& spheres, bool& canBounce)
+    glm::vec3 RayTracer::traceRay(Ray& ray, const std::vector<Sphere>& spheres, int bounceLimit)
     {
+        glm::vec3 colour(0.0f);
+        glm::vec3 attenuation(1.0f);
 
-        float closestIntersection = std::numeric_limits<float>::max();
+        glm::vec3 backgroundColour(0.0f);
 
-        HitSphere hitSphere = HitSphere({ glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f), Material({{ 0.0f, 0.0f, 0.0f }}) });
+        HitSphere hitSphere = HitSphere({ glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(0.0f), Material({{ 0.0f, 0.0f, 0.0f }}), glm::vec3(0.0f) });
 
-        for (auto sphere : spheres) {
-            float intersection;
-            if (isRayIntersectSphere(ray, sphere, intersection)) {
-                if (intersection < closestIntersection) {
-                    if (sphere.material.reflectivness < 0.001f) {
-                        canBounce = false;
+        for (int t = 0; t < bounceLimit; t++) {
+
+            glm::vec3 bounceColour{ backgroundColour };
+
+            float closestIntersection = std::numeric_limits<float>::max();
+            for (auto sphere : spheres) {
+                float intersection;
+                if (isRayIntersectSphere(ray, sphere, intersection)) {
+                    if (intersection < closestIntersection) {
+                        closestIntersection = intersection;
+
+                        hitSphere.hitPoint = ray.origin + ray.direction * intersection;
+                        hitSphere.hitNormal = glm::normalize(hitSphere.hitPoint - sphere.centre);
+                        hitSphere.hitMaterial = sphere.material;
                     }
-                    else {
-                        canBounce = true;
-                    }
-
-                    closestIntersection = intersection;
-                    hitSphere.hitColour = sphere.material.materialColour;
-                    hitSphere.hitPoint = ray.origin + intersection * ray.direction;
-                    hitSphere.hitNormal = glm::normalize(hitSphere.hitPoint - sphere.centre);
-                    hitSphere.hitMaterial = sphere.material;
                 }
             }
+
+            if (closestIntersection < std::numeric_limits<float>::max()) {
+
+                hitSphere.hitColour *= hitSphere.hitMaterial.materialColour;
+                hitSphere.hitLight += hitSphere.hitMaterial.emissiveStrength * hitSphere.hitMaterial.emissionColour * attenuation;
+
+                ray.origin = hitSphere.hitPoint + 0.001f * hitSphere.hitNormal;
+
+                // Specular Bounce
+                // ray.direction = glm::reflect(ray.direction, hitSphere.hitNormal);
+
+                // Diffuse Bounce
+                glm::vec3 randomNum = glm::normalize(getRandomOnUnitSphere());
+                if (glm::dot(randomNum, hitSphere.hitNormal) < 0) {
+                    randomNum = glm::normalize(glm::reflect(randomNum, hitSphere.hitNormal));
+                }
+
+                ray.direction = randomNum;
+
+                bounceColour = hitSphere.hitLight * hitSphere.hitColour;
+            }
+
+            colour += attenuation * bounceColour;
+            attenuation *= 0.8f;
         }
-
-        if (closestIntersection < std::numeric_limits<float>::max()) {
-            glm::vec3 colour = hitSphere.hitMaterial.emissionColour * hitSphere.hitMaterial.emissiveStrength;
-
-            ray.origin = hitSphere.hitPoint + 0.001f * hitSphere.hitNormal;
-            ray.direction = glm::reflect(ray.direction, hitSphere.hitNormal);
-
-            return colour + hitSphere.hitColour * hitSphere.hitMaterial.reflectivness;
-        }
-
-        return glm::vec3(0.0f);
+        return colour;
     }
 
     bool RayTracer::isRayIntersectSphere(const Ray& ray, const Sphere& sphere, float& intersection)
@@ -128,6 +156,18 @@ namespace RayTracer {
             return true;
         }
         return false;
+    }
+
+    glm::vec3 RayTracer::getRandomOnUnitSphere()
+    {
+        // Generates a point on a unit sphere, with uniform distribution
+        // https://corysimon.github.io/articles/uniformdistn-on-sphere/
+        double theta = 2 * 3.1415927 * m_uniformDistribution(m_random);
+        double phi = acos(1 - 2 * m_uniformDistribution(m_random));
+        double x = sin(phi) * cos(theta);
+        double y = sin(phi) * sin(theta);
+        double z = cos(phi);
+        return glm::vec3(x, y, z);
     }
 
     Material::Material(glm::vec3 colour)
