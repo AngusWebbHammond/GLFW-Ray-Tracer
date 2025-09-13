@@ -8,18 +8,18 @@ namespace RayTracer {
     RayTracer::RayTracer()
     {
         Material material1 = Material({ 1.0f, 1.0f, 1.0f });
-        Material material2 = Material({ 0.0f, 1.0f, 0.0f });
-        Material material3 = Material({ 0.0f, 0.0f, 1.0f });
+        Material material2 = Material({ 0.0f, 1.0f, 0.5f });
+        Material material3 = Material({ 0.0f, 0.4f, 1.0f });
 
         material1.emissionColour = glm::vec3(1.0f);
-        material1.emissiveStrength = 1.0f;
+        material1.emissiveStrength = 10.0f;
         material2.reflectivness = 1.0f;
         material3.reflectivness = 0.3f;
 
         m_spheres = {
-            Sphere({ {4.5f, 0.2f, 2.6f}, 1.0f, material1 }),
-            Sphere({ {0.0f, 0.0f, 3.0f}, 1.0f, material2 }),
-            Sphere({ {0.0f, 10.0f, 3.0f}, 9.0f, material3 })
+            Sphere({ {2.9f, -0.4f, -0.2f}, 1.0f, material1 }),
+            Sphere({ {0.0f, 0.2f, 0.0f}, 1.0f, material2 }),
+            Sphere({ {0.0f, 19.7f, 0.0f}, 18.3f, material3 })
         };
 
         m_random = std::mt19937();
@@ -123,7 +123,7 @@ namespace RayTracer {
                 bounceColour = hitSphere.hitLight * hitSphere.hitColour;
             }
 
-            colour += attenuation * bounceColour;
+            colour += bounceColour;
             attenuation *= 0.8f;
         }
         return colour;
