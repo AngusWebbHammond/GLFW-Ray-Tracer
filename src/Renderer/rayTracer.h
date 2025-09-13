@@ -59,6 +59,7 @@ namespace RayTracer {
         std::vector<Sphere> m_spheres;
         bool m_accumilate;
         int m_frames;
+        glm::vec3 m_background;
 
     private:
         std::mt19937 m_random;

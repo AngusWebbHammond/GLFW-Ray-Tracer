@@ -8,23 +8,29 @@ namespace RayTracer {
     RayTracer::RayTracer()
     {
         Material material1 = Material({ 1.0f, 1.0f, 1.0f });
-        Material material2 = Material({ 0.0f, 1.0f, 0.5f });
+        Material material2 = Material({ 1.0f, 1.0f, 1.0f });
         Material material3 = Material({ 0.0f, 0.4f, 1.0f });
+        // Material material4 = Material({ 1.0f, 1.0f, 1.0f });
+
+        // material4.emissionColour = glm::vec3(1.0f);
+        // material4.emissiveStrength = 1.0f;
 
         material1.emissionColour = glm::vec3(1.0f);
         material1.emissiveStrength = 10.0f;
         material2.reflectivness = 1.0f;
-        material3.reflectivness = 0.3f;
+        material3.reflectivness = 0.0f;
 
         m_spheres = {
             Sphere({ {2.9f, -0.4f, -0.2f}, 1.0f, material1 }),
             Sphere({ {0.0f, 0.2f, 0.0f}, 1.0f, material2 }),
-            Sphere({ {0.0f, 19.7f, 0.0f}, 18.3f, material3 })
+            Sphere({ {0.0f, 19.7f, 0.0f}, 18.3f, material3 }),
+            // Sphere({ {2.9f, -0.4f, -3.0f}, 1.0f, material4 }),
         };
 
         m_random = std::mt19937();
         m_accumilate = false;
         m_frames = 1;
+        m_background = glm::vec3(0.5f);
     }
 
     std::vector<glm::vec3> RayTracer::run(int bounceLimit, Renderer* renderer)
@@ -80,13 +86,11 @@ namespace RayTracer {
         glm::vec3 colour(0.0f);
         glm::vec3 attenuation(1.0f);
 
-        glm::vec3 backgroundColour(0.0f);
-
         HitSphere hitSphere = HitSphere({ glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(0.0f), Material({{ 0.0f, 0.0f, 0.0f }}), glm::vec3(0.0f) });
 
         for (int t = 0; t < bounceLimit; t++) {
 
-            glm::vec3 bounceColour{ backgroundColour };
+            glm::vec3 bounceColour{ 0.0f };
 
             float closestIntersection = std::numeric_limits<float>::max();
             for (auto sphere : spheres) {
@@ -104,27 +108,45 @@ namespace RayTracer {
 
             if (closestIntersection < std::numeric_limits<float>::max()) {
 
-                hitSphere.hitColour *= hitSphere.hitMaterial.materialColour;
+
                 hitSphere.hitLight += hitSphere.hitMaterial.emissiveStrength * hitSphere.hitMaterial.emissionColour * attenuation;
 
                 ray.origin = hitSphere.hitPoint + 0.001f * hitSphere.hitNormal;
+                float randomFloat = fabs(m_uniformDistribution(m_random)) / m_uniformDistribution.max();
 
-                // Specular Bounce
-                // ray.direction = glm::reflect(ray.direction, hitSphere.hitNormal);
-
-                // Diffuse Bounce
-                glm::vec3 randomNum = glm::normalize(getRandomOnUnitSphere());
-                if (glm::dot(randomNum, hitSphere.hitNormal) < 0) {
-                    randomNum = glm::normalize(glm::reflect(randomNum, hitSphere.hitNormal));
+                if (randomFloat < hitSphere.hitMaterial.reflectivness) {
+                    // Specular Bounce
+                    ray.direction = glm::reflect(ray.direction, hitSphere.hitNormal);
+                }
+                else {
+                    // Diffuse Bounce
+                    glm::vec3 randomNum = glm::normalize(getRandomOnUnitSphere());
+                    if (glm::dot(randomNum, hitSphere.hitNormal) < 0) {
+                        randomNum = glm::normalize(glm::reflect(randomNum, hitSphere.hitNormal));
+                    }
+                    ray.direction = randomNum;
                 }
 
-                ray.direction = randomNum;
+                colour += hitSphere.hitLight * hitSphere.hitColour;
 
-                bounceColour = hitSphere.hitLight * hitSphere.hitColour;
+                // Hit light, stop bouncing
+                // if (glm::dot(hitSphere.hitLight, hitSphere.hitLight) > 0.001f) {
+                //     return colour;
+                // }
+
+                hitSphere.hitColour *= hitSphere.hitMaterial.materialColour;
             }
 
-            colour += bounceColour;
-            attenuation *= 0.8f;
+            else {
+                if (t == 0) {
+                    return m_background;
+                }
+
+                colour += m_background * hitSphere.hitColour * attenuation;
+                return colour;
+            }
+
+            attenuation *= 0.75f;
         }
         return colour;
     }

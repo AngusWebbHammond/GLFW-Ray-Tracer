@@ -53,10 +53,12 @@ namespace RayTracer::UI {
                 ImGui::PushID(&sphere);
                 ImGui::DragFloat3("Centre", glm::value_ptr(sphere.centre), 0.1f);
                 ImGui::DragFloat("Radius", &sphere.radius, 0.1f);
-                ImGui::ColorEdit3("Colour", glm::value_ptr(sphere.material.materialColour), 0.1f);
+                ImGui::ColorEdit3("Colour", glm::value_ptr(sphere.material.materialColour));
                 ImGui::PopID();
                 ImGui::Separator();
             }
+
+            ImGui::ColorEdit3("Background Colour", glm::value_ptr(rayTracer.m_background));
             ImGui::End();
         }
     }
