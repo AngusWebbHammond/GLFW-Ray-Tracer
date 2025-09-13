@@ -113,6 +113,7 @@ namespace RayTracer {
                 hitSphere.hitLight += hitSphere.hitMaterial.emissiveStrength * hitSphere.hitMaterial.emissionColour * attenuation;
 
                 ray.origin = hitSphere.hitPoint + 0.001f * hitSphere.hitNormal;
+#if 0
                 float randomFloat = fabs(m_uniformDistribution(m_random)) / m_uniformDistribution.max();
 
                 if (randomFloat < hitSphere.hitMaterial.reflectivness) {
@@ -121,21 +122,18 @@ namespace RayTracer {
                 }
                 else {
                     // Diffuse Bounce
-                    glm::vec3 randomNum = glm::normalize(getRandomOnUnitSphere());
-                    if (glm::dot(randomNum, hitSphere.hitNormal) < 0) {
-                        randomNum = glm::normalize(glm::reflect(randomNum, hitSphere.hitNormal));
-                    }
-                    ray.direction = randomNum;
+
                 }
+#else
+                glm::vec3 randomNum = glm::normalize(getRandomOnUnitSphere());
+                if (glm::dot(randomNum, hitSphere.hitNormal) < 0) {
+                    randomNum = glm::normalize(glm::reflect(randomNum, hitSphere.hitNormal));
+                }
+                ray.direction = (1 - hitSphere.hitMaterial.reflectivness) * randomNum + hitSphere.hitMaterial.reflectivness * glm::reflect(ray.direction, hitSphere.hitNormal);
+                ray.direction = glm::normalize(ray.direction);
+#endif
 
                 colour += hitSphere.hitLight * hitSphere.hitColour;
-
-                // TODO Find a better blending for the Diffuse and Specular
-
-                // Hit light, stop bouncing
-                // if (glm::dot(hitSphere.hitLight, hitSphere.hitLight) > 0.001f) {
-                //     return colour;
-                // }
 
                 hitSphere.hitColour *= hitSphere.hitMaterial.materialColour;
             }
