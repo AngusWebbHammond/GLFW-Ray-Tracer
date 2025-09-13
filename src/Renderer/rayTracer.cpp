@@ -1,11 +1,14 @@
 #pragma once
 
 #include <iostream>
+#include <numeric>
+#include <algorithm>
+#include <execution>
 
 #include "rayTracer.h"
 
 namespace RayTracer {
-    RayTracer::RayTracer() : m_randomNumber(123456789)
+    RayTracer::RayTracer()
     {
         Material material1 = Material({ 1.0f, 1.0f, 1.0f });
         Material material2 = Material({ 1.0f, 1.0f, 1.0f });
@@ -14,12 +17,12 @@ namespace RayTracer {
         Material material5 = Material({ 0.5f, 1.0f, 1.0f });
 
         material1.emissionColour = glm::vec3(1.0f);
-        material1.emissiveStrength = 20.0f;
+        material1.emissiveStrength = 2.3f;
 
-        material5.reflectivness = 0.65f;
+        material2.reflectivness = 0.75f;
 
         m_spheres = {
-            Sphere({ {0.0f, -10.0f, -6.0f}, 3.0f, material1 }),
+            Sphere({ {0.0f, -23.9f, -3.0f}, 9.3f, material1 }),
             Sphere({ {0.0f, 0.0f, -2.5f}, 1.0f, material2 }),
             Sphere({ {3.0f, 0.0f, -3.0f}, 1.25f, material3 }),
             Sphere({ {-3.0f, 0.0f, -3.0f}, 1.25f, material4 }),
@@ -55,7 +58,7 @@ namespace RayTracer {
         else {
             m_frames = 1;
         }
-
+#if 0
         for (int i = 0; i < fbHeight; i++) {
             for (int j = 0; j < fbWidth; j++) {
                 Ray ray;
@@ -68,17 +71,56 @@ namespace RayTracer {
 
                 glm::vec3 colour = traceRay(ray, m_spheres, bounceLimit);
 
+                int pixelIndex = i * frameBufferSize.width + j;
+
                 if (m_accumilate) {
-                    m_accumilateFrameBuffer[i * frameBufferSize.width + j] += colour;
-                    frameBuffer[i * frameBufferSize.width + j] = m_accumilateFrameBuffer[i * frameBufferSize.width + j] / glm::vec3(m_frames);
+                    m_accumilateFrameBuffer[pixelIndex] += colour;
+                    frameBuffer[pixelIndex] = m_accumilateFrameBuffer[pixelIndex] / glm::vec3(m_frames);
                 }
 
                 else {
-                    m_accumilateFrameBuffer[i * frameBufferSize.width + j] = glm::vec3(0.0f);
-                    frameBuffer[i * frameBufferSize.width + j] = colour;
+                    m_accumilateFrameBuffer[pixelIndex] = glm::vec3(0.0f);
+                    frameBuffer[pixelIndex] = colour;
                 }
             }
         }
+#else
+        std::vector<int> indices(fbWidth * fbHeight);
+        std::iota(indices.begin(), indices.end(), 0);
+
+		// Thanks to The Cherno for the for_each + lambda idea for parallelism
+        std::for_each(
+            std::execution::par,
+            indices.begin(),
+            indices.end(),
+            [&](int idx) {
+                int i = idx / fbWidth;
+                int j = idx % fbWidth;
+
+                Ray ray;
+                ray.origin = camera.location;
+                ray.direction = glm::normalize(glm::vec3(
+                    (2.0f * (j + 0.5f) / frameBufferSize.width - 1.0f) * rayFactorAR,
+                    (1.0f - 2.0f * (i + 0.5f) / frameBufferSize.height) * rayFactor,
+                    1.0f
+                ));
+
+                glm::vec3 colour = traceRay(ray, m_spheres, bounceLimit);
+
+                int pixelIndex = i * frameBufferSize.width + j;
+
+                if (m_accumilate) {
+                    m_accumilateFrameBuffer[pixelIndex] += colour;
+                    frameBuffer[pixelIndex] =
+                        m_accumilateFrameBuffer[pixelIndex] / glm::vec3(m_frames);
+                }
+                else {
+                    m_accumilateFrameBuffer[pixelIndex] = glm::vec3(0.0f);
+                    frameBuffer[pixelIndex] = colour;
+                }
+            }
+        );
+#endif
 
         return frameBuffer;
     }
@@ -123,7 +165,7 @@ namespace RayTracer {
 
                 // Combines the specular and diffuse bounces
 				// Uses Lamberts cosine law for diffuse bounces (favours bounces closer to the normal)
-                ray.direction = glm::normalize((1 - hitSphere.hitMaterial.reflectivness) * (hitSphere.hitNormal + randomNum) + hitSphere.hitMaterial.reflectivness * glm::reflect(ray.direction, hitSphere.hitNormal));
+                ray.direction = glm::normalize((1 - hitSphere.hitMaterial.reflectivness) * glm::normalize(hitSphere.hitNormal + randomNum) + hitSphere.hitMaterial.reflectivness * glm::reflect(ray.direction, hitSphere.hitNormal));
 
                 colour += hitSphere.hitLight * hitSphere.hitColour;
 
@@ -175,12 +217,16 @@ namespace RayTracer {
 
     glm::vec3 RayTracer::getRandomOnUnitSphere()
     {
-        // Thanks to https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=545s
-        float x = m_normalDistribution(m_randomNumber);
-        float y = m_normalDistribution(m_randomNumber);
-        float z = m_normalDistribution(m_randomNumber);
+	// Thanks to The Cherno https://www.youtube.com/watch?v=1KTgc2SEt50&list=PLlrATfBNZ98edc5GshdBtREv5asFW3yXl&index=12 for the Thread Local idea
+    thread_local Random rng(123456789 + std::hash<std::thread::id>()(std::this_thread::get_id()));
+    thread_local std::normal_distribution<float> normalDistribution(0.0f, 1.0f);
 
-		return glm::normalize(glm::vec3(x, y, z));
+    // Thanks to Sebastian Lauge https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=545s for the uniform random on unit sphere idea
+    float x = normalDistribution(rng);
+    float y = normalDistribution(rng);
+    float z = normalDistribution(rng);
+
+    return glm::normalize(glm::vec3(x, y, z));
     }
 
     Random::Random(std::uint32_t seed)
@@ -190,7 +236,6 @@ namespace RayTracer {
 
     std::uint32_t Random::getRandomFloat()
     {
-        // Edit on an xor random number generator from 
         uint32_t result = m_randomNumber;
         result ^= result << 13;
         result ^= result >> 17;

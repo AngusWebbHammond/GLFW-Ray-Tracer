@@ -1,10 +1,10 @@
 # GLFW Ray Tracer
 
-A 3D ray tracer, built using GLFW and ImGui.
+A 3D ray tracer, built using GLFW and ImGui. Currently running on the CPU.
 
-|                      Specular Reflections                       |                     Diffuse Reflections                      |
-| :-------------------------------------------------------------: | :----------------------------------------------------------: |
-| ![Lighter Background](./assets/docs/Application%20View%202.jpg) | ![Diffuse Bounces](./assets/docs/Application%20View%203.jpg) |
+|                          Specular Reflections                          |                        Diffuse Reflections                         |
+| :--------------------------------------------------------------------: | :----------------------------------------------------------------: |
+| ![Lighter Background](./assets/docs/Application%20View%20Specular.jpg) | ![Diffuse Bounces](./assets/docs/Application%20View%20Diffuse.jpg) |
 
 This project is licensed under the MIT License, see [LICENSE](/LICENSE).
 
@@ -12,10 +12,11 @@ This project is licensed under the MIT License, see [LICENSE](/LICENSE).
 
 ## Features
 
-- Diffuse Reflections, through uniform random number generation.
+- Diffuse Reflections, using Lambert's cosine law to favour random values near the normal.
 - Specular Reflections.
 - Realtime updating of spheres.
 - Accumulation of frames.
+- Multithreading of the CPU to parallelize the ray casting from the camera.
 
 ## Dependencies
 

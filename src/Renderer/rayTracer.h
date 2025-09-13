@@ -80,11 +80,6 @@ namespace RayTracer {
         glm::vec3 m_background;
 
     private:
-		std::normal_distribution<float> m_normalDistribution;
-
-        std::vector<glm::vec3> m_accumilateFrameBuffer;
-
-        Random m_randomNumber;
-        
+        std::vector<glm::vec3> m_accumilateFrameBuffer;        
     };
 }

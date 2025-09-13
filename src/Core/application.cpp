@@ -8,7 +8,7 @@ namespace RayTracer {
         createWindow(width, height);
         UI::initImGui(m_window);
         m_renderer.init(m_window);
-        m_bounces = 3;
+        m_bounces = 12;
     }
 
     Application::~Application()
