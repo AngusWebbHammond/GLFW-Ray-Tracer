@@ -5,30 +5,27 @@
 #include "rayTracer.h"
 
 namespace RayTracer {
-    RayTracer::RayTracer()
+    RayTracer::RayTracer() : m_randomNumber(123456789)
     {
         Material material1 = Material({ 1.0f, 1.0f, 1.0f });
         Material material2 = Material({ 1.0f, 1.0f, 1.0f });
-        Material material3 = Material({ 0.0f, 0.4f, 1.0f });
-        // Material material4 = Material({ 1.0f, 1.0f, 1.0f });
-
-        // material4.emissionColour = glm::vec3(1.0f);
-        // material4.emissiveStrength = 1.0f;
+        Material material3 = Material({ 1.0f, 0.9f, 0.4f });
+        Material material4 = Material({ 1.0f, 0.3f, 0.0f });
+        Material material5 = Material({ 0.5f, 1.0f, 1.0f });
 
         material1.emissionColour = glm::vec3(1.0f);
-        material1.emissiveStrength = 10.0f;
-        material2.reflectivness = 1.0f;
-        material3.reflectivness = 1.0f;
+        material1.emissiveStrength = 20.0f;
+
+        material5.reflectivness = 0.65f;
 
         m_spheres = {
-            Sphere({ {2.9f, -0.4f, -0.2f}, 1.0f, material1 }),
-            Sphere({ {0.0f, 0.2f, 0.0f}, 1.0f, material2 }),
-            Sphere({ {0.0f, 1.0f, -1.0f}, 0.5f, material2 }),
-            Sphere({ {0.0f, 19.7f, 0.0f}, 18.3f, material3 }),
-            // Sphere({ {2.9f, -0.4f, -3.0f}, 1.0f, material4 }),
+            Sphere({ {0.0f, -10.0f, -6.0f}, 3.0f, material1 }),
+            Sphere({ {0.0f, 0.0f, -2.5f}, 1.0f, material2 }),
+            Sphere({ {3.0f, 0.0f, -3.0f}, 1.25f, material3 }),
+            Sphere({ {-3.0f, 0.0f, -3.0f}, 1.25f, material4 }),
+            Sphere({ {0.0f, 20.0f, -3.0f}, 19.0f, material5 }),
         };
 
-        m_random = std::mt19937();
         m_accumilate = false;
         m_frames = 1;
         m_background = glm::vec3(0.5f);
@@ -46,21 +43,25 @@ namespace RayTracer {
         Camera camera;
         camera.fov = 45.0f;
         camera.location = glm::vec3(0.0f, 0.0f, -10.0f);
+        int fbHeight = frameBufferSize.height;
+        int fbWidth = frameBufferSize.width;
 
         float rayFactor = glm::tan(glm::radians(camera.fov) / 2.0f);
         float aspectRatio = frameBufferSize.width / static_cast<float>(frameBufferSize.height);
+
+        float rayFactorAR = rayFactor * aspectRatio;
 
         if (m_accumilate) m_frames++;
         else {
             m_frames = 1;
         }
 
-        for (int i = 0; i < frameBufferSize.height; i++) {
-            for (int j = 0; j < frameBufferSize.width; j++) {
+        for (int i = 0; i < fbHeight; i++) {
+            for (int j = 0; j < fbWidth; j++) {
                 Ray ray;
                 ray.origin = camera.location;
                 ray.direction = glm::normalize(glm::vec3(
-                    (2.0f * (j + 0.5f) / frameBufferSize.width - 1.0f) * rayFactor * aspectRatio,
+                    (2.0f * (j + 0.5f) / frameBufferSize.width - 1.0f) * rayFactorAR,
                     (1.0f - 2.0f * (i + 0.5f) / frameBufferSize.height) * rayFactor,
                     1.0f
                 ));
@@ -94,7 +95,7 @@ namespace RayTracer {
             glm::vec3 bounceColour{ 0.0f };
 
             float closestIntersection = std::numeric_limits<float>::max();
-            for (auto sphere : spheres) {
+            for (auto &sphere : spheres) {
                 float intersection;
                 if (isRayIntersectSphere(ray, sphere, intersection)) {
                     if (intersection < closestIntersection) {
@@ -113,25 +114,16 @@ namespace RayTracer {
                 hitSphere.hitLight += hitSphere.hitMaterial.emissiveStrength * hitSphere.hitMaterial.emissionColour * attenuation;
 
                 ray.origin = hitSphere.hitPoint + 0.001f * hitSphere.hitNormal;
-#if 0
-                float randomFloat = fabs(m_uniformDistribution(m_random)) / m_uniformDistribution.max();
 
-                if (randomFloat < hitSphere.hitMaterial.reflectivness) {
-                    // Specular Bounce
-                    ray.direction = glm::reflect(ray.direction, hitSphere.hitNormal);
-                }
-                else {
-                    // Diffuse Bounce
-
-                }
-#else
-                glm::vec3 randomNum = glm::normalize(getRandomOnUnitSphere());
+                glm::vec3 randomNum = getRandomOnUnitSphere();
                 if (glm::dot(randomNum, hitSphere.hitNormal) < 0) {
-                    randomNum = glm::normalize(glm::reflect(randomNum, hitSphere.hitNormal));
+                    // randomNum and hitNormal are both unit vectors, so this does not need to be normalized
+                    randomNum = glm::reflect(randomNum, hitSphere.hitNormal);
                 }
-                ray.direction = (1 - hitSphere.hitMaterial.reflectivness) * randomNum + hitSphere.hitMaterial.reflectivness * glm::reflect(ray.direction, hitSphere.hitNormal);
-                ray.direction = glm::normalize(ray.direction);
-#endif
+
+                // Combines the specular and diffuse bounces
+				// Uses Lamberts cosine law for diffuse bounces (favours bounces closer to the normal)
+                ray.direction = glm::normalize((1 - hitSphere.hitMaterial.reflectivness) * (hitSphere.hitNormal + randomNum) + hitSphere.hitMaterial.reflectivness * glm::reflect(ray.direction, hitSphere.hitNormal));
 
                 colour += hitSphere.hitLight * hitSphere.hitColour;
 
@@ -183,14 +175,29 @@ namespace RayTracer {
 
     glm::vec3 RayTracer::getRandomOnUnitSphere()
     {
-        // Generates a point on a unit sphere, with uniform distribution
-        // https://corysimon.github.io/articles/uniformdistn-on-sphere/
-        double theta = 2 * 3.1415927 * m_uniformDistribution(m_random);
-        double phi = acos(1 - 2 * m_uniformDistribution(m_random));
-        double x = sin(phi) * cos(theta);
-        double y = sin(phi) * sin(theta);
-        double z = cos(phi);
-        return glm::vec3(x, y, z);
+        // Thanks to https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=545s
+        float x = m_normalDistribution(m_randomNumber);
+        float y = m_normalDistribution(m_randomNumber);
+        float z = m_normalDistribution(m_randomNumber);
+
+		return glm::normalize(glm::vec3(x, y, z));
+    }
+
+    Random::Random(std::uint32_t seed)
+    {
+        m_randomNumber = seed;
+    }
+
+    std::uint32_t Random::getRandomFloat()
+    {
+        // Edit on an xor random number generator from 
+        uint32_t result = m_randomNumber;
+        result ^= result << 13;
+        result ^= result >> 17;
+        result ^= result << 5;
+        m_randomNumber = result;
+
+        return result;
     }
 
     Material::Material(glm::vec3 colour)

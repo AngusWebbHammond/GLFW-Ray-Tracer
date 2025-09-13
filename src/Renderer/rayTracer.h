@@ -44,11 +44,29 @@ namespace RayTracer {
 
         glm::vec3 hitLight;
     };
+    
+    struct Random {
+        using resultType = std::uint32_t;
+
+        Random() = default;
+        Random(std::uint32_t seed);
+
+        static constexpr resultType min() { return 0; }
+        static constexpr resultType max() { return UINT32_MAX; }
+
+        resultType operator()() {
+            return getRandomFloat();
+        }
+
+    private:
+        resultType m_randomNumber;
+        std::uint32_t getRandomFloat();
+    };
 
     class RayTracer {
     public:
         RayTracer();
-        std::vector<glm::vec3> run(int bounceLimit, Renderer* renderer);
+        std::vector<glm::vec3> run(int bounceLimit, Renderer* renderer);		
 
     private:
         glm::vec3 traceRay(Ray& ray, const std::vector<Sphere>& spheres, int bounceLimit);
@@ -62,9 +80,11 @@ namespace RayTracer {
         glm::vec3 m_background;
 
     private:
-        std::mt19937 m_random;
-        std::uniform_real_distribution<double> m_uniformDistribution;
+		std::normal_distribution<float> m_normalDistribution;
 
         std::vector<glm::vec3> m_accumilateFrameBuffer;
+
+        Random m_randomNumber;
+        
     };
 }
