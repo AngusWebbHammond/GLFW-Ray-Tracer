@@ -40,7 +40,6 @@ namespace RayTracer::UI {
                 ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
                 renderer->setWidthAndHeight(viewportPanelSize.x, viewportPanelSize.y);
                 ImGui::Image((void*)(intptr_t)renderer->getTexture(), viewportPanelSize, ImVec2(0, 1), ImVec2(1, 0));
-                ImGui::Text("Test");
                 ImGui::End();
             }
         }
@@ -51,9 +50,15 @@ namespace RayTracer::UI {
         if (ImGui::Begin("Properties")) {
             for (Sphere& sphere : rayTracer.m_spheres) {
                 ImGui::PushID(&sphere);
+
                 ImGui::DragFloat3("Centre", glm::value_ptr(sphere.centre), 0.1f);
                 ImGui::DragFloat("Radius", &sphere.radius, 0.1f);
-                ImGui::ColorEdit3("Colour", glm::value_ptr(sphere.material.materialColour));
+                ImGui::ColorEdit3("Sphere Colour", glm::value_ptr(sphere.material.materialColour));
+
+                ImGui::DragFloat("Reflectivness", &sphere.material.reflectivness, 0.01f, 0.0f, 1.0f);
+                ImGui::DragFloat("Emission Strength", &sphere.material.emissiveStrength, 0.1f, 0.0f);
+                ImGui::ColorEdit3("Emission Colour", glm::value_ptr(sphere.material.emissionColour));
+
                 ImGui::PopID();
                 ImGui::Separator();
             }

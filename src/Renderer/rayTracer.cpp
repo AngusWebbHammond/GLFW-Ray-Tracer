@@ -130,6 +130,8 @@ namespace RayTracer {
 
                 colour += hitSphere.hitLight * hitSphere.hitColour;
 
+                // TODO Find a better blending for the Diffuse and Specular
+
                 // Hit light, stop bouncing
                 // if (glm::dot(hitSphere.hitLight, hitSphere.hitLight) > 0.001f) {
                 //     return colour;
