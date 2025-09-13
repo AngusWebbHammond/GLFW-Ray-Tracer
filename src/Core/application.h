@@ -23,5 +23,6 @@ namespace RayTracer {
         GLFWwindow* m_window;
         Renderer m_renderer;
         RayTracer m_rayTracer;
+        int m_bounces;
     };
 }

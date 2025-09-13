@@ -18,11 +18,12 @@ namespace RayTracer {
         material1.emissionColour = glm::vec3(1.0f);
         material1.emissiveStrength = 10.0f;
         material2.reflectivness = 1.0f;
-        material3.reflectivness = 0.0f;
+        material3.reflectivness = 1.0f;
 
         m_spheres = {
             Sphere({ {2.9f, -0.4f, -0.2f}, 1.0f, material1 }),
             Sphere({ {0.0f, 0.2f, 0.0f}, 1.0f, material2 }),
+            Sphere({ {0.0f, 1.0f, -1.0f}, 0.5f, material2 }),
             Sphere({ {0.0f, 19.7f, 0.0f}, 18.3f, material3 }),
             // Sphere({ {2.9f, -0.4f, -3.0f}, 1.0f, material4 }),
         };
@@ -38,13 +39,13 @@ namespace RayTracer {
         FrameBufferSettings frameBufferSize = renderer->getFrameBufferSize();
         std::vector<glm::vec3> frameBuffer(frameBufferSize.width * frameBufferSize.height);
 
-        if (m_accumilateFrameBuffer.empty()) {
+        if (m_accumilateFrameBuffer.empty() || frameBuffer.size() != m_accumilateFrameBuffer.size()) {
             m_accumilateFrameBuffer.resize(frameBufferSize.width * frameBufferSize.height, glm::vec3(0.0f));
         }
 
         Camera camera;
         camera.fov = 45.0f;
-        camera.location = glm::vec3(0.0f, 0.0f, -5.0f);
+        camera.location = glm::vec3(0.0f, 0.0f, -10.0f);
 
         float rayFactor = glm::tan(glm::radians(camera.fov) / 2.0f);
         float aspectRatio = frameBufferSize.width / static_cast<float>(frameBufferSize.height);

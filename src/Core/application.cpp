@@ -8,6 +8,7 @@ namespace RayTracer {
         createWindow(width, height);
         UI::initImGui(m_window);
         m_renderer.init(m_window);
+        m_bounces = 3;
     }
 
     Application::~Application()
@@ -25,8 +26,7 @@ namespace RayTracer {
             UI::createImGuiPropertiesPanel(m_rayTracer);
 
             float timeStart = glfwGetTime();
-
-            m_renderer.render(m_rayTracer.run(3, &m_renderer));
+            m_renderer.render(m_rayTracer.run(m_bounces, &m_renderer));
 
             float timeEnd = glfwGetTime();
 
@@ -35,9 +35,13 @@ namespace RayTracer {
             ImGui::Begin("Stats");
             ImGui::Text("Frame Time: %.3f ms", elapsedTime * 1000);
             ImGui::Text("FPS: %.f", 1 / elapsedTime);
+
             ImGui::Separator();
+
             ImGui::Checkbox("Accumulate", &m_rayTracer.m_accumilate);
             ImGui::Text("Frames: %.i", m_rayTracer.m_frames);
+            ImGui::InputInt("Bounces", &m_bounces);
+
             ImGui::End();
 
             UI::renderImGui();
