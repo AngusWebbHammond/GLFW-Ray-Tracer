@@ -12,8 +12,8 @@ namespace RayTracer {
 		glm::vec3 materialColour;
 		float reflectivness;
 
-		float emissiveStrength;
 		glm::vec3 emissionColour;
+		float emissiveStrength;
 
 		Material(glm::vec3 colour);
 	};

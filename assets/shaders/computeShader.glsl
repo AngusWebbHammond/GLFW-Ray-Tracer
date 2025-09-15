@@ -37,6 +37,8 @@ struct Ray {
 struct RayHit {
     int sphereIndex;
     float t;
+    vec3 lightAccumulation;
+    vec3 colourAccumulation;
 };
 
 vec3 rayDirection(Camera camera, vec2 uv) {
@@ -140,16 +142,19 @@ void main() {
     ray.direction = rayDirection(camera, uv);
 
     vec3 accumulatedColor = vec3(0.0);
-    float accumulatedWeight = 0.5;
+    float accumulatedWeight = 1.0f;
 
-    int bounceLimit = 6;
+    int bounceLimit = 12;
+
+    RayHit rayHit;
+    rayHit.lightAccumulation = vec3(0.0);
+    rayHit.colourAccumulation = vec3(1.0);
 
     for (int bounce = 0; bounce < bounceLimit; bounce++) {
         float closestT = 1e20;
-        RayHit rayHit;
-        rayHit.t = closestT;
+        rayHit.t = 1e20;
         rayHit.sphereIndex = -1;
-
+        
         // Find closest intersection
         for (int i = 0; i < int(info.x); i++) {
             RayHit tempHit = rayHit;
@@ -164,7 +169,7 @@ void main() {
 
         if (rayHit.sphereIndex < 0) {
             // No hit, add background and terminate
-            accumulatedColor += vec3(0.0) * accumulatedWeight;
+            accumulatedColor += vec3(0.2) * rayHit.colourAccumulation * accumulatedWeight;
             break;
         }
 
@@ -173,8 +178,11 @@ void main() {
         vec3 normal = normalize(hitPoint - hitSphere.centre.xyz);
 
         // Accumulate emission + material color
-        accumulatedColor += (hitSphere.material.materialColour.xyz) * accumulatedWeight;
-
+        
+        rayHit.lightAccumulation += hitSphere.material.emmissiveColor.xyz * hitSphere.material.emmissiveColor.w * accumulatedWeight;
+        accumulatedColor += (rayHit.colourAccumulation) * rayHit.lightAccumulation;
+        rayHit.colourAccumulation *= hitSphere.material.materialColour.xyz;
+        
         // Compute new ray direction (diffuse + specular)
         float reflectivity = hitSphere.material.materialColour.w;
         float seed = float(bounce) * 12.9898 + float(pixel.x + pixel.y * size.x) * 78.233 + info.y;
@@ -184,7 +192,7 @@ void main() {
         ray.direction = normalize((1.0 - reflectivity) * normalize(normal + randomDir) + reflectivity * reflect(ray.direction, normal));
 
         // Reduce weight for next bounce
-        accumulatedWeight *= 0.5;
+        accumulatedWeight *= 0.75;
     }
 
     imageStore(img_output, pixel, vec4(accumulatedColor, 1.0));
