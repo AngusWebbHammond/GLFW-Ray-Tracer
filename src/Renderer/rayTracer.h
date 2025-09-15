@@ -4,82 +4,94 @@
 #include <vector>
 
 #include "renderer.h"
-#include <random>
+#include "../Shader/shader.h"
+
 
 namespace RayTracer {
-    struct Material {
-        glm::vec3 materialColour;
+	struct alignas(16) Material {
+		glm::vec3 materialColour;
+		float reflectivness;
 
-        float reflectivness;
-        float metallicness;
+		float emissiveStrength;
+		glm::vec3 emissionColour;
 
-        float emissiveStrength;
-        glm::vec3 emissionColour;
+		Material(glm::vec3 colour);
+	};
 
-        Material(glm::vec3 colour);
-    };
+	struct alignas(16) Sphere {
+		glm::vec3 centre;
+		float radius;
+		Material material;
+	};
 
-    struct Sphere {
-        glm::vec3 centre;
-        float radius;
-        Material material;
-    };
+	struct Ray {
+		glm::vec3 origin;
+		glm::vec3 direction;
+	};
 
-    struct Ray {
-        glm::vec3 origin;
-        glm::vec3 direction;
-    };
+	struct Camera {
+		glm::vec3 location;
+		float fov;
+	};
 
-    struct Camera {
-        glm::vec3 location;
-        float fov;
-    };
+	struct HitSphere {
+		glm::vec3 hitPoint;
+		glm::vec3 hitColour;
+		glm::vec3 hitNormal;
 
-    struct HitSphere {
-        glm::vec3 hitPoint;
-        glm::vec3 hitColour;
-        glm::vec3 hitNormal;
+		Material hitMaterial;
 
-        Material hitMaterial;
+		glm::vec3 hitLight;
+	};
 
-        glm::vec3 hitLight;
-    };
-    
-    struct Random {
-        using resultType = std::uint32_t;
+	struct Random {
+		using resultType = std::uint32_t;
 
-        Random() = default;
-        Random(std::uint32_t seed);
+		Random() = default;
+		Random(std::uint32_t seed);
 
-        static constexpr resultType min() { return 0; }
-        static constexpr resultType max() { return UINT32_MAX; }
+		static constexpr resultType min() { return 0; }
+		static constexpr resultType max() { return UINT32_MAX; }
 
-        resultType operator()() {
-            return getRandomFloat();
-        }
+		resultType operator()() {
+			return getRandomFloat();
+		}
 
-    private:
-        resultType m_randomNumber;
-        std::uint32_t getRandomFloat();
-    };
+	private:
+		resultType m_randomNumber;
+		std::uint32_t getRandomFloat();
+	};
 
-    class RayTracer {
-    public:
-        RayTracer();
-        std::vector<glm::vec3> run(int bounceLimit, Renderer* renderer);		
+	class RayTracer {
 
-    private:
-        glm::vec3 traceRay(Ray& ray, const std::vector<Sphere>& spheres, int bounceLimit);
-        bool isRayIntersectSphere(const Ray& ray, const Sphere& sphere, float& closestIntersection);
-        glm::vec3 getRandomOnUnitSphere();
+	public:
+		RayTracer();
+		void init();
 
-    public:
-        std::vector<Sphere> m_spheres;
-        bool m_accumilate;
-        int m_frames;
-        glm::vec3 m_background;
+		std::vector<glm::vec3> run(int bounceLimit, Renderer* renderer);
 
-    private:
-        std::vector<glm::vec3> m_accumilateFrameBuffer;        
-    };
+	private:
+		glm::vec3 traceRay(Ray& ray, const std::vector<Sphere>& spheres, int bounceLimit);
+		bool isRayIntersectSphere(const Ray& ray, const Sphere& sphere, float& closestIntersection);
+		glm::vec3 getRandomOnUnitSphere();
+
+	public:
+		std::vector<Sphere> m_spheres;
+		bool m_accumilate;
+		int m_frames;
+		glm::vec3 m_background;
+
+	private:
+		std::vector<glm::vec3> m_accumilateFrameBuffer;
+		Shader m_computeShader;
+
+		GLuint m_sphereSSBO;
+		GLuint m_paramsUBO;
+
+		struct ParamsUBO {
+			alignas(16) glm::vec2 info;
+		};
+
+		ParamsUBO m_params;
+	};
 }

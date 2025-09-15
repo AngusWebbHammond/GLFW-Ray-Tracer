@@ -41,11 +41,15 @@ set (APPLICATION_SOURCES
     src/Renderer/renderer.h
     src/Renderer/rayTracer.cpp
     src/Renderer/rayTracer.h
+    src/Shader/shader.h 
+    src/Shader/shader.cpp
 )
 
 add_executable(main src/main.cpp ${GLAD_GL} ${IMGUI_SOURCES} ${APPLICATION_SOURCES})
 
 target_link_libraries(main PRIVATE glfw glm)
+
+add_compile_definitions(PROJECT_DIR="${CMAKE_SOURCE_DIR}")
 
 if( MSVC )
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0")

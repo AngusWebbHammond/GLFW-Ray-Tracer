@@ -9,20 +9,21 @@
 #include "../Renderer/rayTracer.h"
 
 namespace RayTracer {
-    class Application {
-    public:
-        Application(GLuint width, GLuint height);
-        ~Application();
+	class Application {
+	public:
+		Application();
+		~Application();
 
-        void run();
+		void init(GLuint width, GLuint height);
+		void run();
 
-    private:
-        void createWindow(GLuint width, GLuint height);
+	private:
+		void createWindow(GLuint width, GLuint height);
 
-    private:
-        GLFWwindow* m_window;
-        Renderer m_renderer;
-        RayTracer m_rayTracer;
-        int m_bounces;
-    };
+	private:
+		GLFWwindow* m_window;
+		Renderer m_renderer;
+		RayTracer m_rayTracer;
+		int m_bounces;
+	};
 }
