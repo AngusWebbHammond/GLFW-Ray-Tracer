@@ -125,7 +125,7 @@ vec3 getRandomOnUnitHemisphere(vec3 normal, float seed) {
 
 void main() {
     Camera camera;
-    camera.position = vec3(0.0, 0.0, 5.0);
+    camera.position = vec3(0.0, 0.0, 10.0f);
     camera.forward = vec3(0.0, 0.0, -1.0);
     camera.up = vec3(0.0, 1.0, 0.0);
     camera.right = cross(camera.forward, camera.up);

@@ -1,10 +1,11 @@
 # GLFW Ray Tracer
 
-A 3D ray tracer, built using GLFW and ImGui. Currently running on the CPU.
+A 3D ray tracer, built using GLFW and ImGui. Built to run either on the CPU or the GPU through Compute Shaders.
 
-|                          Specular Reflections                          |                        Diffuse Reflections                         |
-| :--------------------------------------------------------------------: | :----------------------------------------------------------------: |
-| ![Lighter Background](./assets/docs/Application%20View%20Specular.jpg) | ![Diffuse Bounces](./assets/docs/Application%20View%20Diffuse.jpg) |
+|   Rendering Type   |                             Specular Reflections                             |                           Diffuse Reflections                            |
+| :----------------: | :--------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
+|        CPU         |    ![Lighter Background](./assets/docs/Application%20View%20Specular.jpg)    |    ![Diffuse Bounces](./assets/docs/Application%20View%20Diffuse.jpg)    |
+| GPU Compute Shader | ![Lighter Background](./assets/docs/Application%20View%20Specular%20GPU.jpg) | ![Diffuse Bounces](./assets/docs/Application%20View%20Diffuse%20GPU.jpg) |
 
 This project is licensed under the MIT License, see [LICENSE](/LICENSE).
 
@@ -17,6 +18,7 @@ This project is licensed under the MIT License, see [LICENSE](/LICENSE).
 - Realtime updating of spheres.
 - Accumulation of frames.
 - Multithreading of the CPU to parallelize the ray casting from the camera.
+- Utilisation of the GPU through a Compute Shader.
 
 ## Dependencies
 
