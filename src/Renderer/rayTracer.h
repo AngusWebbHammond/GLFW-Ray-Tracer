@@ -89,7 +89,9 @@ namespace RayTracer {
 		GLuint m_paramsUBO;
 
 		struct ParamsUBO {
-			alignas(16) glm::vec2 info;
+			alignas(16) glm::vec4 info;
+			alignas(16) glm::vec4 backgroundColourandNumBounces;
+			alignas(16) float currentTime;
 		};
 
 		ParamsUBO m_params;

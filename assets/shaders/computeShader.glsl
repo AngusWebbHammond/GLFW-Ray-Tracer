@@ -18,7 +18,9 @@ layout(std430, binding = 1) buffer Spheres {
 };
 
 layout(std140, binding = 2) uniform Params { 
-    vec2 info; // x = sphere count, y = frame count
+    vec4 info; // x = sphere count, y = frame count, z = accumulation count, w = isAccumulating
+    vec4 backgroundColourAndNumBounces; // xyz = background colour, w = number of bounces
+    float currentTime;
 };
 
 struct Camera {
@@ -80,15 +82,12 @@ uint hash( uint x ) {
 }
 
 float random( float f ) {
-    const uint mantissaMask = 0x007FFFFFu;
-    const uint one          = 0x3F800000u;
-   
-    uint h = hash( floatBitsToUint( f ) );
-    h &= mantissaMask;
-    h |= one;
-    
-    float  r2 = uintBitsToFloat( h );
-    return r2 - 1.0;
+    uint x = floatBitsToUint(f);
+    x ^= x << 13u;
+    x ^= x >> 17u;
+    x ^= x << 5u;
+    x = hash(x);
+    return x * (1.0 / 4294967295.0);
 }
 
 // Uniform random point on unit sphere
@@ -113,7 +112,7 @@ vec3 getRandomOnUnitHemisphere(vec3 normal, float seed) {
 //     if (pixel.x >= size.x || pixel.y >= size.y) return;
 
 //     // Use pixel + frame count as seed
-//     float seed = float(pixel.x + pixel.y * size.x) + info.y * 13.37;
+//     float seed = float(pixel.x + pixel.y * size.x) + info.y * 223498345.234;
 
 //     // Generate 3 random floats for RGB
 //     float r = random(seed);
@@ -136,6 +135,8 @@ void main() {
     ivec2 size = imageSize(img_output);
     if (pixel.x >= size.x || pixel.y >= size.y) return;
 
+    
+
     vec2 uv = vec2(pixel) / vec2(size);
     Ray ray;
     ray.origin = camera.position;
@@ -144,13 +145,11 @@ void main() {
     vec3 accumulatedColor = vec3(0.0);
     float accumulatedWeight = 1.0f;
 
-    int bounceLimit = 12;
-
     RayHit rayHit;
     rayHit.lightAccumulation = vec3(0.0);
     rayHit.colourAccumulation = vec3(1.0);
 
-    for (int bounce = 0; bounce < bounceLimit; bounce++) {
+    for (int bounce = 0; bounce < backgroundColourAndNumBounces.w; bounce++) {
         float closestT = 1e20;
         rayHit.t = 1e20;
         rayHit.sphereIndex = -1;
@@ -169,7 +168,7 @@ void main() {
 
         if (rayHit.sphereIndex < 0) {
             // No hit, add background and terminate
-            accumulatedColor += vec3(0.2) * rayHit.colourAccumulation * accumulatedWeight;
+            accumulatedColor += vec3(backgroundColourAndNumBounces.xyz) * rayHit.colourAccumulation * accumulatedWeight;
             break;
         }
 
@@ -185,7 +184,7 @@ void main() {
         
         // Compute new ray direction (diffuse + specular)
         float reflectivity = hitSphere.material.materialColour.w;
-        float seed = float(bounce) * 12.9898 + float(pixel.x + pixel.y * size.x) * 78.233 + info.y;
+        float seed = float(bounce) * 12.9898 + float(pixel.x + pixel.y * size.x) * 78.233 + currentTime*info.y;
         vec3 randomDir = getRandomOnUnitHemisphere(normal, seed);
 
         ray.origin = hitPoint + normal * 1e-4;
@@ -195,5 +194,15 @@ void main() {
         accumulatedWeight *= 0.75;
     }
 
-    imageStore(img_output, pixel, vec4(accumulatedColor, 1.0));
+    if (info.w > 0.5) {
+        vec4 prev = imageLoad(img_output, pixel);
+        // Accumulate with previous frame
+        accumulatedColor = (prev.xyz * info.z + accumulatedColor) / (info.z + 1.0);
+        imageStore(img_output, pixel, vec4(accumulatedColor, 1.0));
+    }
+
+    else {
+        // No accumulation
+        imageStore(img_output, pixel, vec4(accumulatedColor, 1.0));
+    }
 }

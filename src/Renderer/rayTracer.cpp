@@ -50,6 +50,10 @@ namespace RayTracer {
 
 		m_params.info.x = m_spheres.size();
 		m_params.info.y = 0;
+		m_params.info.z = 1;
+		m_params.info.w = 0;
+		m_params.currentTime = 0.0f;
+		m_params.backgroundColourandNumBounces = glm::vec4(m_background, 12.0f);
 
 		std::cout << "Sphere count: " << m_params.info.x << std::endl;
 
@@ -64,6 +68,7 @@ namespace RayTracer {
 	}
 
 	std::vector<glm::vec3> RayTracer::run(int bounceLimit, Renderer* renderer) {
+		static bool firstRun = true;
 		FrameBufferSettings frameBufferSize = renderer->getFrameBufferSize();
 		std::vector<glm::vec3> frameBuffer(frameBufferSize.width * frameBufferSize.height);
 
@@ -82,10 +87,18 @@ namespace RayTracer {
 
 		float rayFactorAR = rayFactor * aspectRatio;
 
-		if (m_accumilate)
+		if (m_accumilate) {
+			firstRun = false;
 			m_frames++;
+			m_params.info.w = 1.0f;
+			m_params.info.z = m_frames;
+		}
+
 		else {
-			m_frames = 1;
+			firstRun = true;
+			m_frames = 0;
+			m_params.info.w = 0.0f;
+			m_params.info.z = m_frames;
 		}
 
 #define COMPUTE_SHADER
@@ -93,18 +106,25 @@ namespace RayTracer {
 #ifdef COMPUTE_SHADER
 		frameBuffer.resize(fbHeight * fbWidth, glm::vec3(0.0f));
 
-		renderer->updateOpenGLTexture(frameBuffer);
+		if (firstRun) {
+			renderer->updateOpenGLTexture(frameBuffer);
+		}
 
 		m_computeShader.useShader();
-		m_computeShader.bindImageTexture(0, renderer->getTexture(), GL_WRITE_ONLY, GL_RGBA32F);
+		m_computeShader.bindImageTexture(0, renderer->getTexture(), GL_READ_WRITE, GL_RGBA32F);
+
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_sphereSSBO);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, m_spheres.size() * sizeof(Sphere), m_spheres.data(), GL_STATIC_DRAW);
-		m_computeShader.dispatchCompute(glm::vec3((fbWidth + 16 - 1) / 16, (fbHeight + 16 - 1) / 16, 1));
+
+		m_params.currentTime = static_cast<float>(glfwGetTime());
 
 		glBindBuffer(GL_UNIFORM_BUFFER, m_paramsUBO);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(ParamsUBO), &m_params);
 
+		m_computeShader.dispatchCompute(glm::vec3((fbWidth + 16 - 1) / 16, (fbHeight + 16 - 1) / 16, 1));
+
 		m_params.info.y++;
+		m_params.backgroundColourandNumBounces = glm::vec4(m_background, bounceLimit);
 
 #else
 #ifdef SINGLE_THREAD
