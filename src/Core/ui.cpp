@@ -63,6 +63,23 @@ namespace RayTracer::UI {
                 ImGui::Separator();
             }
 
+            for (Triangle& triangle : rayTracer.m_triangles) {
+				ImGui::PushID(&triangle);
+
+				ImGui::DragFloat3("Point 1", glm::value_ptr(triangle.v0), 0.1f);
+				ImGui::DragFloat3("Point 2", glm::value_ptr(triangle.v1), 0.1f);
+				ImGui::DragFloat3("Point 3", glm::value_ptr(triangle.v2), 0.1f);
+				ImGui::DragFloat3("Normal", glm::value_ptr(triangle.normal), 0.1f);
+				ImGui::ColorEdit3("Colour", glm::value_ptr(triangle.material.materialColour));
+
+				ImGui::DragFloat("Reflectivness", &triangle.material.reflectivness, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("Emission Strength", &triangle.material.emissiveStrength, 0.1f, 0.0f);
+				ImGui::ColorEdit3("Emission Colour", glm::value_ptr(triangle.material.emissionColour));
+
+				ImGui::PopID();
+				ImGui::Separator();
+			}
+
             ImGui::ColorEdit3("Background Colour", glm::value_ptr(rayTracer.m_background));
             ImGui::End();
         }

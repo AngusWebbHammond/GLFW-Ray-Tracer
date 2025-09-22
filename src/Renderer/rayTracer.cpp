@@ -34,6 +34,91 @@ namespace RayTracer {
 			Sphere({ { 0.0f, -20.0f, -3.0f }, 19.0f, material5 }),
 		};
 
+		m_triangles = {
+			Triangle({
+				{ 0.099900f, 1.729058f, -0.019480f },
+				{ -1.593872f, 0.669219f, -0.108247f },
+				{ -0.933950f, -0.508988f, 1.366992f },
+				{ -0.4170f, 0.6100f, 0.6738f }, material3
+			}),
+			Triangle({
+				{ 0.099900f, 1.729058f, -0.019480f },
+				{ -0.933950f, -0.508988f, 1.366992f },
+				{ 0.759822f, 0.550850f, 1.455759f },
+				{ -0.4170f, 0.6100f, 0.6738f }, material3
+			}),
+
+				// Face 2 (4/5/2 3/4/2 7/6/2 8/7/2)
+				Triangle({
+					{ 1.593872f, -0.669219f, 0.108247f },
+					{ 0.759822f, 0.550850f, 1.455759f },
+					{ -0.933950f, -0.508988f, 1.366992f },
+					{ 0.3300f, -0.5891f, 0.7376f }, material3
+				}),
+				Triangle({
+					{ 1.593872f, -0.669219f, 0.108247f },
+					{ -0.933950f, -0.508988f, 1.366992f },
+					{ -0.099900f, -1.729058f, 0.019480f },
+					{ 0.3300f, -0.5891f, 0.7376f }, material3
+				}),
+
+				// Face 3 (8/8/3 7/9/3 5/10/3 6/11/3)
+				Triangle({
+					{ -0.099900f, -1.729058f, 0.019480f },
+					{ -0.933950f, -0.508988f, 1.366992f },
+					{ -1.593872f, 0.669219f, -0.108247f },
+					{ -0.8469f, -0.5299f, -0.0444f }, material3
+				}),
+				Triangle({
+					{ -0.099900f, -1.729058f, 0.019480f },
+					{ -1.593872f, 0.669219f, -0.108247f },
+					{ -0.759822f, -0.550850f, -1.455759f },
+					{ -0.8469f, -0.5299f, -0.0444f }, material3
+				}),
+
+				// Face 4 (6/12/4 2/13/4 4/5/4 8/14/4)
+				Triangle({
+					{ -0.759822f, -0.550850f, -1.455759f },
+					{ 0.933950f, 0.508988f, -1.366992f },
+					{ 1.593872f, -0.669219f, 0.108247f },
+					{ 0.4170f, -0.6100f, -0.6738f }, material3
+				}),
+				Triangle({
+					{ -0.759822f, -0.550850f, -1.455759f },
+					{ 1.593872f, -0.669219f, 0.108247f },
+					{ -0.099900f, -1.729058f, 0.019480f },
+					{ 0.4170f, -0.6100f, -0.6738f }, material3
+				}),
+
+				// Face 5 (2/13/5 1/1/5 3/4/5 4/5/5)
+				Triangle({
+					{ 0.933950f, 0.508988f, -1.366992f },
+					{ 0.099900f, 1.729058f, -0.019480f },
+					{ 0.759822f, 0.550850f, 1.455759f },
+					{ 0.8469f, 0.5299f, 0.0444f }, material3
+				}),
+				Triangle({
+					{ 0.933950f, 0.508988f, -1.366992f },
+					{ 0.759822f, 0.550850f, 1.455759f },
+					{ 1.593872f, -0.669219f, 0.108247f },
+					{ 0.8469f, 0.5299f, 0.0444f }, material3
+				}),
+
+				// Face 6 (6/11/6 5/10/6 1/1/6 2/13/6)
+				Triangle({
+					{ -0.759822f, -0.550850f, -1.455759f },
+					{ -1.593872f, 0.669219f, -0.108247f },
+					{ 0.099900f, 1.729058f, -0.019480f },
+					{ -0.3300f, 0.5891f, -0.7376f }, material3
+				}),
+				Triangle({
+					{ -0.759822f, -0.550850f, -1.455759f },
+					{ 0.099900f, 1.729058f, -0.019480f },
+					{ 0.933950f, 0.508988f, -1.366992f },
+					{ -0.3300f, 0.5891f, -0.7376f }, material3
+				}),
+		};
+
 		m_accumilate = false;
 		m_frames = 1;
 		m_background = glm::vec3(0.5f);
@@ -46,6 +131,12 @@ namespace RayTracer {
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sphereSSBO);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, m_spheres.size() * sizeof(Sphere), m_spheres.data(), GL_STATIC_DRAW);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_sphereSSBO);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+		glGenBuffers(1, &m_triangleSSBO);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangleSSBO);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, m_triangles.size() * sizeof(Triangle), m_triangles.data(), GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_triangleSSBO);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 		m_params.info.x = m_spheres.size();
@@ -102,7 +193,7 @@ namespace RayTracer {
 		}
 
 #define COMPUTE_SHADER
-// #define SINGLE_THREAD
+		// #define SINGLE_THREAD
 #ifdef COMPUTE_SHADER
 		frameBuffer.resize(fbHeight * fbWidth, glm::vec3(0.0f));
 
@@ -115,6 +206,9 @@ namespace RayTracer {
 
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_sphereSSBO);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, m_spheres.size() * sizeof(Sphere), m_spheres.data(), GL_STATIC_DRAW);
+
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_triangleSSBO);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, m_triangles.size() * sizeof(Triangle), m_triangles.data(), GL_STATIC_DRAW);
 
 		m_params.currentTime = static_cast<float>(glfwGetTime());
 

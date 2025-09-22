@@ -17,6 +17,18 @@ layout(std430, binding = 1) buffer Spheres {
     Sphere spheres[];
 };
 
+struct Triangle {
+    vec3 v0;
+    vec3 v1;
+    vec3 v2;
+    vec3 normal;
+    Material material;
+};
+
+layout(std430, binding = 3) buffer Triangles {
+    Triangle triangles[];
+};
+
 layout(std140, binding = 2) uniform Params { 
     vec4 info; // x = sphere count, y = frame count, z = accumulation count, w = isAccumulating
     vec4 backgroundColourAndNumBounces; // xyz = background colour, w = number of bounces
@@ -38,6 +50,7 @@ struct Ray {
 
 struct RayHit {
     int sphereIndex;
+    int triangleIndex;
     float t;
     vec3 lightAccumulation;
     vec3 colourAccumulation;
@@ -51,25 +64,6 @@ vec3 rayDirection(Camera camera, vec2 uv) {
     );
     return dir;
 }
-
-bool isIntersectSphere(Ray ray, Sphere sphere, inout RayHit rayHit) {
-    vec3 oc = ray.origin - sphere.centre.xyz;
-    float bTerm = dot(oc, ray.direction);
-    float cTerm = dot(oc, oc) - sphere.centre.w * sphere.centre.w;
-
-    float discriminant = bTerm * bTerm - cTerm;
-    if (discriminant < 0.0) return false;
-
-    float t0 = -bTerm - sqrt(discriminant);
-    float t1 = -bTerm + sqrt(discriminant);
-
-    if (t0 > 0.001) rayHit.t = t0;
-    else if (t1 > 0.001) rayHit.t = t1;
-    else return false;
-
-    return true;
-}
-
 
 // Thanks to https://amindforeverprogramming.blogspot.com/2013/07/random-floats-in-glsl-330.html
 uint hash( uint x ) {
@@ -105,37 +99,74 @@ vec3 getRandomOnUnitHemisphere(vec3 normal, float seed) {
     return dir;
 }
 
-// Debug Random Noise
-// void main() {
-//     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
-//     ivec2 size = imageSize(img_output);
-//     if (pixel.x >= size.x || pixel.y >= size.y) return;
+bool isIntersectSphere(Ray ray, Sphere sphere, inout RayHit rayHit) {
+    vec3 oc = ray.origin - sphere.centre.xyz;
+    float bTerm = dot(oc, ray.direction);
+    float cTerm = dot(oc, oc) - sphere.centre.w * sphere.centre.w;
 
-//     // Use pixel + frame count as seed
-//     float seed = float(pixel.x + pixel.y * size.x) + info.y * 223498345.234;
+    float discriminant = bTerm * bTerm - cTerm;
+    if (discriminant < 0.0) return false;
 
-//     // Generate 3 random floats for RGB
-//     float r = random(seed);
-//     float g = random(seed + 1.0);
-//     float b = random(seed + 2.0);
+    float t0 = -bTerm - sqrt(discriminant);
+    float t1 = -bTerm + sqrt(discriminant);
 
-//     // Store directly as color
-//     imageStore(img_output, pixel, vec4(r, g, b, 1.0));
-// }
+    if (t0 > 0.001) rayHit.t = t0;
+    else if (t1 > 0.001) rayHit.t = t1;
+    else return false;
+
+    return true;
+}
+
+bool isIntersectTriangle(Ray ray, Triangle triangle, inout RayHit rayHit) {
+    float denom = dot(ray.direction, triangle.normal);
+    if (abs(denom) < 1e-6) return false; // parallel
+
+    float t = dot(triangle.v0 - ray.origin, triangle.normal) / denom;
+    if (t < 0.001) return false; // behind ray
+
+    vec3 hitPoint = ray.origin + ray.direction * t;
+
+    vec3 e0 = triangle.v1 - triangle.v0;
+    vec3 e1 = triangle.v2 - triangle.v0;
+    vec3 p  = hitPoint - triangle.v0;
+
+    float dot00 = dot(e0, e0);
+    float dot01 = dot(e0, e1);
+    float dot02 = dot(e0, p);
+    float dot11 = dot(e1, e1);
+    float dot12 = dot(e1, p);
+
+    float invDenom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+    float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+    float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+    if (u < 0.0 || v < 0.0 || u + v > 1.0) return false;
+
+    rayHit.t = t;
+    return true;
+}
 
 void main() {
     Camera camera;
-    camera.position = vec3(0.0, 0.0, 10.0f);
-    camera.forward = vec3(0.0, 0.0, -1.0);
-    camera.up = vec3(0.0, 1.0, 0.0);
-    camera.right = cross(camera.forward, camera.up);
+    camera.position = vec3(0.0, 0.0, 10.0);
     camera.fov = 45.0;
+
+    float yaw   = -90* 3.14/180;   // rotate around Y
+    float pitch = 0.0* 3.14/180;   // look up/down
+
+    camera.forward = normalize(vec3(
+        cos(pitch) * cos(yaw),
+        sin(pitch),
+        cos(pitch) * sin(yaw)
+    ));
+
+    vec3 worldUp = vec3(0.0, 1.0, 0.0);
+    camera.right   = normalize(cross(camera.forward, worldUp));
+    camera.up      = normalize(cross(camera.right, camera.forward));
 
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(img_output);
     if (pixel.x >= size.x || pixel.y >= size.y) return;
-
-    
 
     vec2 uv = vec2(pixel) / vec2(size);
     Ray ray;
@@ -153,37 +184,72 @@ void main() {
         float closestT = 1e20;
         rayHit.t = 1e20;
         rayHit.sphereIndex = -1;
+        rayHit.triangleIndex = -1;
         
         // Find closest intersection
-        for (int i = 0; i < int(info.x); i++) {
+        
+        for (int i = 0; i < triangles.length(); i++) {
+            RayHit tempHit = rayHit;
+            if (isIntersectTriangle(ray, triangles[i], tempHit)) {
+                if (tempHit.t < closestT) {
+                    closestT = tempHit.t;
+                    rayHit.t = tempHit.t;
+                    rayHit.sphereIndex = -1;
+                    rayHit.triangleIndex = i;
+                }
+            }
+        }
+        
+        for (int i = 0; i < spheres.length(); i++) {
             RayHit tempHit = rayHit;
             if (isIntersectSphere(ray, spheres[i], tempHit)) {
                 if (tempHit.t < closestT) {
                     closestT = tempHit.t;
-                    rayHit = tempHit;
+                    rayHit.t = tempHit.t;
                     rayHit.sphereIndex = i;
+                    rayHit.triangleIndex = -1;
                 }
             }
         }
 
-        if (rayHit.sphereIndex < 0) {
-            // No hit, add background and terminate
+        // Debug: visualize t and sphere index
+        // imageStore(img_output, pixel, vec4(rayHit.t/20, rayHit.t/20, rayHit.t/20, 1.0));
+        // imageStore(img_output, pixel, vec4(float(rayHit.sphereIndex)/20.0, float(rayHit.sphereIndex)/20.0, float(rayHit.sphereIndex)/20.0, 1.0));
+        // return;
+
+        if (rayHit.sphereIndex < 0 && rayHit.triangleIndex < 0) {
             accumulatedColor += vec3(backgroundColourAndNumBounces.xyz) * rayHit.colourAccumulation * accumulatedWeight;
             break;
         }
 
-        Sphere hitSphere = spheres[rayHit.sphereIndex];
+        float reflectivity = 0.0;
         vec3 hitPoint = ray.origin + ray.direction * rayHit.t;
-        vec3 normal = normalize(hitPoint - hitSphere.centre.xyz);
-
-        // Accumulate emission + material color
+        vec3 materialColor = vec3(1.0);
+        vec3 emmisiveColor = vec3(0.0);
+        vec3 normal = vec3(0.0);
         
-        rayHit.lightAccumulation += hitSphere.material.emmissiveColor.xyz * hitSphere.material.emmissiveColor.w * accumulatedWeight;
+        if (rayHit.triangleIndex < 0 && rayHit.sphereIndex >=0) {
+            Sphere hitSphere = spheres[rayHit.sphereIndex];
+            normal = normalize(hitPoint - hitSphere.centre.xyz);
+            reflectivity = hitSphere.material.materialColour.w;
+            materialColor = hitSphere.material.materialColour.xyz;
+            emmisiveColor = hitSphere.material.emmissiveColor.xyz * hitSphere.material.emmissiveColor.w;
+        }
+        
+        if (rayHit.sphereIndex < 0 && rayHit.triangleIndex >=0) {
+           Triangle hitTriangle = triangles[rayHit.triangleIndex];
+           normal = hitTriangle.normal;
+           reflectivity = hitTriangle.material.materialColour.w;
+           materialColor = hitTriangle.material.materialColour.xyz;
+           emmisiveColor = hitTriangle.material.emmissiveColor.xyz * hitTriangle.material.emmissiveColor.w;
+        }
+        
+        // Accumulate emission + material color
+        rayHit.lightAccumulation += emmisiveColor * accumulatedWeight;
         accumulatedColor += (rayHit.colourAccumulation) * rayHit.lightAccumulation;
-        rayHit.colourAccumulation *= hitSphere.material.materialColour.xyz;
+        rayHit.colourAccumulation *= materialColor;
         
         // Compute new ray direction (diffuse + specular)
-        float reflectivity = hitSphere.material.materialColour.w;
         float seed = float(bounce) * 12.9898 + float(pixel.x + pixel.y * size.x) * 78.233 + currentTime*info.y;
         vec3 randomDir = getRandomOnUnitHemisphere(normal, seed);
 

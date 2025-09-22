@@ -5,6 +5,7 @@
 
 #include "renderer.h"
 #include "../Shader/shader.h"
+#include <glad/gl.h>
 
 
 namespace RayTracer {
@@ -21,6 +22,14 @@ namespace RayTracer {
 	struct alignas(16) Sphere {
 		glm::vec3 centre;
 		float radius;
+		Material material;
+	};
+
+	struct Triangle {
+		alignas(16) glm::vec3 v0;
+		alignas(16) glm::vec3 v1;
+		alignas(16) glm::vec3 v2;
+		alignas(16) glm::vec3 normal;
 		Material material;
 	};
 
@@ -77,6 +86,7 @@ namespace RayTracer {
 
 	public:
 		std::vector<Sphere> m_spheres;
+		std::vector<Triangle> m_triangles;
 		bool m_accumilate;
 		int m_frames;
 		glm::vec3 m_background;
@@ -86,6 +96,9 @@ namespace RayTracer {
 		Shader m_computeShader;
 
 		GLuint m_sphereSSBO;
+		GLuint m_triangleSSBO;
+
+		GLuint m_CameraUBO;
 		GLuint m_paramsUBO;
 
 		struct ParamsUBO {
